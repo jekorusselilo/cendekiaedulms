@@ -1,0 +1,157 @@
+generator client {
+  provider = "prisma-client"
+  output   = "../src/generated/prisma"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+// ==================== USER ====================
+model User {
+  id                 String   @id @default(cuid())
+  nama               String
+  nim                String   @unique
+  password           String
+  pertanyaanKeamanan String
+  jawabanKeamanan    String
+  role               Role     @default(MAHASISWA)
+  createdAt          DateTime @default(now())
+  updatedAt          DateTime @updatedAt
+
+  courses     Course[]     @relation("DosenCourses")
+  enrollments Enrollment[]
+  submissions Submission[]
+  attendances Attendance[]
+  materials   Material[]
+
+  @@map("users")
+}
+
+enum Role {
+  MAHASISWA
+  DOSEN
+  ADMIN
+}
+
+// ==================== COURSE ====================
+model Course {
+  id        String   @id @default(cuid())
+  nama      String
+  kode      String   @unique
+  deskripsi String?
+  dosenId   String
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  dosen       User         @relation("DosenCourses", fields: [dosenId], references: [id])
+  enrollments Enrollment[]
+  meetings    Meeting[]
+
+  @@map("courses")
+}
+
+// ==================== ENROLLMENT ====================
+model Enrollment {
+  id        String   @id @default(cuid())
+  userId    String
+  courseId  String
+  createdAt DateTime @default(now())
+
+  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+  course Course @relation(fields: [courseId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, courseId])
+  @@map("enrollments")
+}
+
+// ==================== MEETING ====================
+model Meeting {
+  id          String    @id @default(cuid())
+  courseId    String
+  pertemuanKe Int
+  judul       String
+  tanggal     DateTime?
+  isOpen      Boolean   @default(false)
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+
+  course      Course       @relation(fields: [courseId], references: [id], onDelete: Cascade)
+  materials   Material[]
+  assignments Assignment[]
+  attendances Attendance[]
+
+  @@unique([courseId, pertemuanKe])
+  @@map("meetings")
+}
+
+// ==================== MATERIAL ====================
+model Material {
+  id         String   @id @default(cuid())
+  meetingId  String
+  judul      String
+  filePath   String
+  uploadedBy String
+  createdAt  DateTime @default(now())
+
+  meeting  Meeting @relation(fields: [meetingId], references: [id], onDelete: Cascade)
+  uploader User    @relation(fields: [uploadedBy], references: [id])
+
+  @@map("materials")
+}
+
+// ==================== ASSIGNMENT ====================
+model Assignment {
+  id        String    @id @default(cuid())
+  meetingId String
+  judul     String
+  deskripsi String?
+  deadline  DateTime?
+  fileSoal  String?
+  createdAt DateTime  @default(now())
+  updatedAt DateTime  @updatedAt
+
+  meeting     Meeting      @relation(fields: [meetingId], references: [id], onDelete: Cascade)
+  submissions Submission[]
+
+  @@map("assignments")
+}
+
+// ==================== SUBMISSION ====================
+model Submission {
+  id           String   @id @default(cuid())
+  assignmentId String
+  userId       String
+  filePath     String
+  submittedAt  DateTime @default(now())
+  nilai        Int?
+  feedback     String?
+
+  assignment Assignment @relation(fields: [assignmentId], references: [id], onDelete: Cascade)
+  user       User       @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([assignmentId, userId])
+  @@map("submissions")
+}
+
+// ==================== ATTENDANCE ====================
+model Attendance {
+  id        String   @id @default(cuid())
+  meetingId String
+  userId    String
+  status    Status   @default(HADIR)
+  createdAt DateTime @default(now())
+
+  meeting Meeting @relation(fields: [meetingId], references: [id], onDelete: Cascade)
+  user    User    @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([meetingId, userId])
+  @@map("attendances")
+}
+
+enum Status {
+  HADIR
+  IZIN
+  SAKIT
+  ALPA
+}
